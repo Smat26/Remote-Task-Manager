@@ -1,0 +1,31 @@
+ _____   _   _   _____   _       _      
+/  ___/ | | | | | ____| | |     | |     
+| |___  | |_| | | |__   | |     | |     
+\___  \ |  _  | |  __|  | |     | |     
+ ___| | | | | | | |___  | |___  | |___  
+/_____/ |_| |_| |_____| |_____| |_____| 
+
+===============
+COMMANDS
+===============
+
+PROCESS MANAGEMENT:
+run	: Takes a program defined in environment variable and executes it.
+
+OTHER FUNCTIONS:
+print	: Prints any/all arguments given to it.
+add 	: Takes 2 or more arguments, and shows the result of their addition.
+mul 	: Takes 2 or more arguments, and shows the result of their multiplication.
+sub 	: Takes 2 argument, and subtracts the second one from the first.
+div 	: Takes 2 argument, and divides the second and by the first.
+quit	: End the program
+
+===============
+SAMPLE COMMANDS
+===============
+run gedit
+add 2 3 4 5 6
+sub 27 1
+mul 5 5
+div 100 6
+
