@@ -12,12 +12,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <arpa/inet.h>
 
 #define BUFF_SIZE 500
 
 
 struct time;
 struct process;
+struct client;
 struct time{
     int hour;
     int minute;
@@ -33,6 +35,14 @@ struct process{
     bool running;
 };
 
+struct client{
+  char ip[INET_ADDRSTRLEN];
+  int port;
+  int fd;
+  bool running;
+  int pid;
+};
+
 struct process creator(char word[], int fd);
 struct process creator(char word[], int fd);
 void help(int fd);
@@ -41,11 +51,28 @@ int killprocess(struct process p[],int counter, int pid, int fd);
 void listactive(struct process p[], int counter, int fd);
 int killname(struct process p[], int counter, char *token, int fd);
 int makeServer();
+void sig_handler(struct siginfo_t);
+void commands();
 
+struct client c[100];
+int no_of_clients = 0;
 
+    void sig_handler(int sig, siginfo_t *a, void *notused){
+    if (sig == SIGUSR1){
+        write(STDOUT_FILENO,a.si_value, sizeof(a.si_value));
+    }
+}
 
 int main()
 {
+    struct sigaction handler;
+    handler.sa_sigaction = &sig_handler;
+    sigaction (SIGUSR1, &handler, NULL);
+
+   
+  pthread_t socketmaker, command;
+  pthread_create(&command, NULL, commands, (void *) NULL);
+  pthread_detach(command);
 
   int fd = makeServer();
   write(STDOUT_FILENO, "Client Connected", strlen("Client Connected"));
@@ -384,7 +411,6 @@ int killname(struct process p[], int counter, char *token, int fd){
 
 int makeServer(){
    int sockfd, newsockfd, portno, clilen;
-     char buffer[256];
      struct sockaddr_in serv_addr, cli_addr;
      int n;
      sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -399,17 +425,59 @@ int makeServer(){
               sizeof(serv_addr)) < 0) 
               perror("ERROR on binding");
     while(1){
-     listen(sockfd,5);
-
-     clilen = sizeof(cli_addr);
+      listen(sockfd,5);
+      clilen = sizeof(cli_addr);
      newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+
+     inet_ntop(AF_INET, &(cli_addr.sin_addr), c[no_of_clients].ip, INET_ADDRSTRLEN);
+     c[no_of_clients].port = cli_addr.sin_port;
+     c[no_of_clients].fd = newsockfd;
+     c[no_of_clients].running = 1;
      int pid = fork();
      if (pid==0){
       if (newsockfd < 0){
       perror("ERROR on accept");
+      // Tell parent to decrement count HERE
     }
+
      write(STDOUT_FILENO,"after\n",6);
      return newsockfd; 
    }
+   else{
+    c[no_of_clients].pid = pid;
+    no_of_clients++;
    }
+   }
+}
+
+void commands(){
+    char input[BUFF_SIZE];
+    int a;
+    char *token = "initialize";
+    while(strcmp(token,"quit\n")!=0){
+        a = read(STDIN_FILENO, input, BUFF_SIZE);
+        input[a] = '\0';
+        token = strtok(input, " ");
+        if (strcmp(token,"list\n")==0){
+            char buff[BUFF_SIZE];
+            write(STDOUT_FILENO,"\n",1);
+            write(STDOUT_FILENO," +---------------------+------+-------+-------+\n",48);
+            write(STDOUT_FILENO," |          IP         | Port |  PID  |   FD  |\n",48);
+            write(STDOUT_FILENO," +---------------------+------+-------+-------+\n",48);
+            for(int i=0;i< no_of_clients ;i++){
+                if(c[i].running==1){
+                    sprintf(buff, " |%21s|%6d|%7d|%7d|\n",c[i].ip,c[i].port,c[i].pid, c[i].fd);
+                    write(STDOUT_FILENO,buff, strlen(buff));
+                }
+                
+            }
+            write(STDOUT_FILENO," +---------------------+------+-------+-------+\n",48);
+            //  token = "abc";
+            continue;
+    }
+
+
+    }
+    exit(1);
+    
 }
