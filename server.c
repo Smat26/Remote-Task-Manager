@@ -51,7 +51,7 @@ int killprocess(struct process p[],int counter, int pid, int fd);
 void listactive(struct process p[], int counter, int fd);
 int killname(struct process p[], int counter, char *token, int fd);
 int makeServer();
-void sig_handler(struct siginfo_t);
+void sig_handler(int sig, siginfo_t *a, void *notused);
 void commands();
 
 struct client c[100];
@@ -59,7 +59,10 @@ int no_of_clients = 0;
 
     void sig_handler(int sig, siginfo_t *a, void *notused){
     if (sig == SIGUSR1){
-        write(STDOUT_FILENO,a.si_value, sizeof(a.si_value));
+      write(STDOUT_FILENO,"SIGUSR1 received", 16);
+      if(a->si_int== 2){
+        write(STDOUT_FILENO,"2", 1);
+      }
     }
 }
 

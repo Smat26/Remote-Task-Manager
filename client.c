@@ -31,14 +31,16 @@ int main(int argc, char *argv[])
         //sscanf(input,"connect %s %d", ip, port);
         write(STDOUT_FILENO, ip, sizeof(ip));
         write(STDOUT_FILENO, &port, sizeof(port));
-        sleep(4);
         sockfd = connectz(2626, "127.0.0.1");
         if(sockfd <0){
             write(STDOUT_FILENO, "Wrong input", sizeof("Wrong input"));
             continue;
         }
+        else{
+            is_connected  =1;
             pthread_create(&thread1, NULL, listener, (void *) sockfd);
             pthread_detach(thread1);
+            }
         while((strcmp(input,"quit\n")!=0)&& is_connected){
             com = read(STDIN_FILENO, input, 500);
             input[com] = '\0';
