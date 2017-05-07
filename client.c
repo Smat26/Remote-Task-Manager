@@ -8,17 +8,19 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <string.h>
 int connectz(int port, char ip[] );
 
 
-void listener(void *);
+void * listener(void * ptr);
+bool is_connected = 0;
 
 int main(int argc, char *argv[])
 {
     char ip[INET_ADDRSTRLEN];
     int port;
     int sockfd = -1;
-    bool is_connected = 0;
+    
 
 
     char input[500];
@@ -56,13 +58,16 @@ int main(int argc, char *argv[])
                 }
                 write(sockfd, input, com);
             }
+            if(!is_connected){
+
+            }
         }
         if((strcmp(input,"quit\n")==0)){
             break;
         }
         if(is_connected){
             close(sockfd);
-            pthread_cancel(&thread1);
+            pthread_cancel(thread1);
             is_connected = 0;
         }
         
@@ -72,7 +77,7 @@ int main(int argc, char *argv[])
     exit(1);
 }
 
-void listener(void * ptr){
+void * listener(void * ptr){
     int com;
     int sockfd = ptr;
     char input[500];
@@ -86,7 +91,8 @@ void listener(void * ptr){
             break;
         }
         if((strcmp(input,"server disconnecting\n") == 0)|| (strcmp(input,"server quitting\n") == 0)){
-            close(sockfd);
+            //close(sockfd);
+            is_connected = 0;
             write(STDOUT_FILENO, "Please connect\n", sizeof("Please connect\n"));
             break;
 
