@@ -80,7 +80,7 @@ void sig_handler(int sig, siginfo_t *a, void *notused){
       }
     }
     if (sig == SIGCHLD){
-      write(STDOUT_FILENO,"SIGCHLD received", 16);
+      //write(STDOUT_FILENO,"SIGCHLD received", 16);
       int status;
             for(int i=0;i< no_of_clients ;i++){
                 if(c[i].running==1){
@@ -110,7 +110,7 @@ int main()
     int fd = makeServer();
     pthread_create(&listenz, NULL, listener, (void *) fd);
     pthread_detach(listenz);
-    write(STDOUT_FILENO, "Client Connected", strlen("Client Connected"));
+    write(STDOUT_FILENO, "Client Connected\n> ", strlen("Client Connected\n> "));
 
 
     pid_t pidc;
@@ -266,6 +266,7 @@ int main()
       continue;
     }
     if(strcmp(token,"disconnect\n")==0){
+      killall(fd);
       write(fd, "server disconnecting\n",21);
       close(fd);
       exit(1);
@@ -485,7 +486,7 @@ void killall(int fd){
         }
 
     }
-    sprintf(buff, "Killed %d processes\n",19);
+    sprintf(buff, "Killed %d processes\n",killed);
     write(fd,buff, strlen(buff));
 
 }
@@ -521,7 +522,10 @@ int makeServer(){
             // Tell parent to decrement count HERE
         }
 
-        write(STDOUT_FILENO,"after\n",6);
+
+
+
+        
         withserverfd[0] = fd[0];
         withserverfd[1] = fd[1];
         return newsockfd; 
@@ -579,6 +583,9 @@ void commands(){
               if(atoi(token) != NULL){
                 write(fd,"kilp",4);
               }
+              else if(strcmp(token,"all")==0){
+                write(fd,"kila",4);
+              }
               else{
                 write(fd,"kiln",4);
               }
@@ -618,9 +625,25 @@ void commands(){
 
         }
 
+        if(strcmp(token,"disconnect")==0){
+            if(checkfd(fd)){
+              write(fd,"dcnt",4);
+            }
+            else{
+              write(STDOUT_FILENO,"Invalid Address\n> ",18);
+            }
+            continue;  
+        }
+
         if (strcmp(token,"quit")==0)
         {
+          for(int i=0;i< no_of_clients ;i++){
+            if(c[i].running==1){
+              write(c[i].fd[1],"kila",4);
+            }
+          }
           //Disconnect all client code:
+
             exit(1);
         }
     }
@@ -747,17 +770,24 @@ void listener(void * ptr){
             continue;
             
         }
-        if(strcmp(input,"kiln")==0){
-            com = read(withserverfd[0],input, sizeof(input));
-            input[com] = '\0';
-            killname(input,fd);
+        if(strcmp(input,"kila")==0){
+            killall(fd);
             continue;
             
         }
+
+        if(strcmp(input,"kiln")==0){
+          com = read(withserverfd[0],input, sizeof(input));
+          input[com] = '\0';
+          killname(input,fd);
+          continue;
+            
+        }
         if(strcmp(input,"dcnt")==0){
-            write(fd, "server disconnecting\n",21);
-            close(fd);
-            exit(1);
+          killall(fd);
+          write(fd, "server disconnecting\n",21);
+          close(fd);
+          exit(1);
         }
 
     }

@@ -12,13 +12,14 @@ int connectz(int port, char ip[] );
 
 
 void listener(void *);
+bool is_connected = 0;
 
 int main(int argc, char *argv[])
 {
     char ip[INET_ADDRSTRLEN];
     int port;
     int sockfd = -1;
-    bool is_connected = 0;
+    
 
 
     char input[500];
@@ -56,6 +57,9 @@ int main(int argc, char *argv[])
                 }
                 write(sockfd, input, com);
             }
+            if(!is_connected){
+
+            }
         }
         if((strcmp(input,"quit\n")==0)){
             break;
@@ -86,7 +90,8 @@ void listener(void * ptr){
             break;
         }
         if((strcmp(input,"server disconnecting\n") == 0)|| (strcmp(input,"server quitting\n") == 0)){
-            close(sockfd);
+            //close(sockfd);
+            is_connected = 0;
             write(STDOUT_FILENO, "Please connect\n", sizeof("Please connect\n"));
             break;
 
