@@ -61,6 +61,8 @@ void listener();
 int getfd(struct client c[], char input[]);
 bool checkfd(int fd);
 int getsocket(struct client c[], char input[]);
+void listserver(int fd);
+
 
 struct client c[100];
 int no_of_clients = 0;
@@ -169,10 +171,7 @@ int main()
       token = strtok(NULL, "\n");
       int pid = atoi(token);
       if(pid != NULL){
-          int temp = kill(pid, SIGKILL);  
-          if(temp==-1){
-            perror("KILL");
-          }
+        killprocess(pid, fd);
           continue;
       }
       else if(strcmp(token,"all")==0){
@@ -391,6 +390,27 @@ void listactive(struct process p[], int counter, int fd){
 
 }
 
+void listserver(int fd){
+  char buff[BUFF_SIZE];
+  for(int i=0;i<counter;i++){
+          if(p[i].PID == 0){
+              //printf("End");
+              break;
+          }
+      sprintf(buff, " |%23s|%5d|",p[i].name,p[i].PID);
+      write(fd,buff, strlen(buff));
+      sprintf(buff, " %2d:%2d:%2d |", p[i].start.hour,p[i].start.minute,p[i].start.second);
+      write(fd,buff, strlen(buff));
+      if(p[i].running==0){
+      sprintf(buff, " %2d:%2d:%2d |Not Active |\n", p[i].stop.hour,p[i].stop.minute,p[i].stop.second);
+      }
+      else{
+          sprintf(buff, "          |   Active  |\n");
+      }
+      write(fd,buff, strlen(buff));
+  }
+}
+
 int killprocess(int pid, int fd){
 char buff[BUFF_SIZE];
     for(int i=0;i<counter;i++){
@@ -517,6 +537,7 @@ int makeServer(){
 
 void commands(){
     char input[BUFF_SIZE];
+    char input2[BUFF_SIZE];
     int com;
     int fd,sock;
     char *token;
@@ -527,12 +548,14 @@ void commands(){
             write(STDOUT_FILENO, "\n> ",3);
             continue;
         }
+        //sscanf(input2,"%s",input);
+        //strncpy(input2, input, BUFF_SIZE-1);
         fd = getfd(c, input);
         sock = getsocket(c, input);
         //printf("%d",fd);
 
         token = strtok(input, " ");
-        if (strcmp(token,"list")==0){
+        if (strcmp(token,"clients")==0){
             char buff[BUFF_SIZE];
             write(STDOUT_FILENO,"\n",1);
             write(STDOUT_FILENO," +---------------------+------+-------+-------+\n",48);
@@ -549,23 +572,55 @@ void commands(){
             //  token = "abc";
         }
         if(strcmp(token,"kill")==0){
-            token = strtok(input, " ");
-            token = strtok(input, " ");
-            token = strtok(input, " ");
+            token = strtok(NULL, " ");
+            token = strtok(NULL, " ");
+            token = strtok(NULL, " ");
+            if(checkfd(fd)){
+              if(atoi(token) != NULL){
+                write(fd,"kilp",4);
+              }
+              else{
+                write(fd,"kiln",4);
+              }
+              write(fd, token, strlen(token));
+            }
         }
         if(strcmp(token,"message")==0){
             if(checkfd(fd)){
-                token = strtok(NULL, " ");
-                token = strtok(NULL, " ");
-                token = strtok(NULL, " ");
-                write(STDOUT_FILENO,token, strlen(token));
-                write(sock,token, strlen(token));
+              token = strtok(NULL, " ");
+              token = strtok(NULL, " ");
+              token = strtok(NULL, " ");
+                  //write(STDOUT_FILENO,"Inside",6);
+                  //write(STDOUT_FILENO,token,strlen(token)); 
+              write(fd,"msge",4);
+              write(fd,token,strlen(token));
             }
-            
-           }
+            continue;  
+        }
+        
+        if(strcmp(token,"list")==0){
+          write(STDOUT_FILENO,"\n",1);
+          write(STDOUT_FILENO," +-----------------------+-----+----------+----------+-----------+\n",67);
+          write(STDOUT_FILENO," |         Name          | PID |  Started |   Ended  |  Running  |\n",67);
+          write(STDOUT_FILENO," +-----------------------+-----+----------+----------+-----------+\n",67);
+          if(checkfd(fd)){
+            write(fd,"list",4);
+          }
+          else{
+            for(int i=0;i< no_of_clients ;i++){
+              if(c[i].running==1){
+                write(c[i].fd[1],"list",4);
+                sleep(1);
+              }
+            }
+          }
+          write(STDOUT_FILENO," +-----------------------+-----+----------+----------+-----------+\n",67);
+
+        }
+
         if (strcmp(token,"quit")==0)
         {
-            //Disconnect all client code:
+          //Disconnect all client code:
             exit(1);
         }
     }
@@ -577,8 +632,10 @@ int getfd(struct client c[], char input[]){
     char *token;
     char ip[INET_ADDRSTRLEN];
     int port;
+    char tokenizer[BUFF_SIZE];
+    strcpy(tokenizer, input);
 
-    token = strtok(input, " ");
+    token = strtok(tokenizer, " ");
     if (token != NULL)
     {
         token = strtok(NULL, " ");
@@ -613,8 +670,10 @@ int getsocket(struct client c[], char input[]){
     char *token;
     char ip[INET_ADDRSTRLEN];
     int port;
+    char tokenizer[BUFF_SIZE];
+    strcpy(tokenizer, input);
 
-    token = strtok(input, " ");
+    token = strtok(tokenizer, " ");
     if (token != NULL)
     {
         token = strtok(NULL, " ");
@@ -649,7 +708,6 @@ int getsocket(struct client c[], char input[]){
 
 bool checkfd(int fd){
     if(fd == -1){
-        write(STDOUT_FILENO, "Invalid Client", 14);
         return 0;
     }
     else{
@@ -660,16 +718,47 @@ bool checkfd(int fd){
 void listener(void * ptr){
 
     int fd = ptr;
-    char input[200];
+    char input[BUFF_SIZE];
     char *token; 
     int com;
+    sprintf(input, "%d and %d\n", withserverfd[0], withserverfd[1]);
+    //write(STDOUT_FILENO, input, 8);
     while(1){
-        write(STDOUT_FILENO,"Listening",9);
-        read(withserverfd[0],input, sizeof(input));
+        com = read(withserverfd[0],input, 4);
         input[com] = '\0';
-
-        write(STDOUT_FILENO, input, com);
-
+        //token = strtok(input, " ");
+        //write(STDOUT_FILENO, input, 4);
+        if(strcmp(input,"msge")==0){
+          com = read(withserverfd[0],input, sizeof(input));
+          input[com] = '\0';
+          write(fd, input, com);
+          continue;
+        }
+        if(strcmp(input,"list")==0){
+            listserver(STDOUT_FILENO);
+            continue;
+            
+        } 
+        if(strcmp(input,"kilp")==0){
+            com = read(withserverfd[0],input, sizeof(input));
+            input[com] = '\0';
+            int pid = atoi(input);
+            killprocess(pid,fd);
+            continue;
+            
+        }
+        if(strcmp(input,"kiln")==0){
+            com = read(withserverfd[0],input, sizeof(input));
+            input[com] = '\0';
+            killname(input,fd);
+            continue;
+            
+        }
+        if(strcmp(input,"dcnt")==0){
+            write(fd, "server disconnecting\n",21);
+            close(fd);
+            exit(1);
+        }
 
     }
 }
